@@ -1,0 +1,3 @@
+# Execution Loop
+
+PLAN → ACT → OBSERVE → CHECK → RETRY/REVISE → VALIDATE → SAVE STATE → HUMAN CHECKPOINT (when required)
