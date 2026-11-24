@@ -1,0 +1,82 @@
+prompts:
+  A_N0_Check: |
+    初始化检查代理。
+    仅判断输入是否足以初始化课题。
+    输入：{{state.user_goal}} | {{state.target_journal}} | {{state.research_idea_raw}} | {{state.domain_context}}
+    输出 JSON: {"is_input_sufficient": true, "missing_fields": [], "reason": ""}
+
+  A_N0_Generate: |
+    课题卡片生成代理。
+    输出 JSON，包含研究主题、表面问题、疑似变量、痛点、当前阶段、优先问题。
+
+  A_N1_Check: |
+    研究对象澄清检查代理。
+    判断是否足以进入研究对象澄清。
+
+  A_N1_Generate: |
+    研究对象定义代理。
+    输出 JSON，包含表面被解释对象、真正研究对象、差异说明、为何不能只研究表面对象、anchor_sentence。
+
+  A_N2_Check: |
+    核心矛盾检查代理。
+    判断是否足以提炼理论矛盾。
+
+  A_N2_Generate: |
+    核心矛盾生成代理。
+    输出最多两个核心问题与一个主理论张力。
+
+  A_N3_Check: |
+    概念本体拆分检查代理。
+    判断是否具备概念拆分条件。
+
+  A_N3_Generate: |
+    概念界定代理。
+    输出 concepts 数组，每个概念包含 name、ontological_type、is_not、antecedents、latent_form、realized_form、observable_manifestations。
+
+  A_N4_Check: |
+    因果主线检查代理。
+    判断是否具备确定因果主线条件。
+
+  A_N4_Generate: |
+    因果主线生成代理。
+    输出 JSON：事前选择逻辑、事后生成逻辑、主逻辑、辅逻辑、causal_chain、one_sentence_thesis。
+
+  A_N5_Check: |
+    文献定位检查代理。
+    判断是否具备进行文献定位条件。
+
+  A_N5_Generate: |
+    文献定位代理。
+    输出 JSON：parent_literature、nearest_neighbor_concepts、literature_gap、contribution_statement、non_contribution_warning。
+
+  A_N6_Check: |
+    引言生成检查代理。
+    判断是否可以写引言。
+
+  A_N6_Generate: |
+    引言生成代理。
+    输出 JSON：full_text、paragraph_map。
+
+  A_N7_Check: |
+    理论与假设生成检查代理。
+    判断是否具备写理论与假设条件。
+
+  A_N7_Generate: |
+    理论与假设生成代理。
+    输出 JSON：full_text、hypotheses。
+
+  A_N8_Check: |
+    研究设计检查代理。
+    判断是否具备写研究设计条件。
+
+  A_N8_Generate: |
+    研究设计生成代理。
+    输出 JSON：full_text、variable_map、model_map。
+
+  A_N9_Check: |
+    审稿压测检查代理。
+    判断是否具备进入审稿压测条件。
+
+  A_N9_Generate: |
+    顶刊审稿压测代理。
+    输出 JSON：top_3_criticisms、failure_layer_map、one_sentence_thesis、pass_or_revise。

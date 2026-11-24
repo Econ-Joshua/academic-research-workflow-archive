@@ -1,0 +1,520 @@
+workflow:
+  id: paper_writing_multiagent_workflow_v1
+  name: Academic Paper Multi-Agent Workflow
+  version: "1.0.0"
+  language: zh-CN
+  description: "Minimal runnable example"
+
+runtime:
+  orchestration_mode: sequential_by_stage
+  max_global_retries: 2
+  max_agent_retries: 1
+  strict_validation: true
+  save_intermediate_outputs: true
+  fail_fast: false
+  default_temperature:
+    check_agent: 0.0
+    generate_agent: 0.3
+    validate_agent: 0.0
+
+state:
+  user_goal: null
+  target_journal: null
+  research_idea_raw: null
+  domain_context: null
+  research_card: null
+  research_object_card: null
+  tension_card: null
+  concept_table: null
+  causal_card: null
+  literature_positioning: null
+  introduction_draft: null
+  theory_hypotheses_draft: null
+  research_design_draft: null
+  stress_test_report: null
+  one_sentence_thesis: null
+
+stages:
+  stage_1_foundation:
+    name: 理论地基链
+    node_order: [N0_Init, N1_Object, N2_Tension, N3_Concept, N4_Causality]
+    entry_requirements:
+      - field: user_goal
+        op: not_empty
+      - field: research_idea_raw
+        op: not_empty
+    exit_gate:
+      id: foundation_stability_gate
+      conditions:
+        - field: research_object_card.true_research_object
+          op: not_empty
+        - field: research_object_card.anchor_sentence
+          op: contains_all
+          value: ["不是", "而是"]
+        - field: tension_card.main_theoretical_tension
+          op: not_empty
+        - field: concept_table.concepts
+          op: min_length
+          value: 2
+        - field: causal_card.causal_chain
+          op: min_length
+          value: 2
+        - field: causal_card.one_sentence_thesis
+          op: not_empty
+    rollback_scope: [N0_Init, N1_Object, N2_Tension, N3_Concept, N4_Causality]
+
+  stage_2_manuscript:
+    name: 成稿生成链
+    node_order: [N5_Literature, N6_Introduction, N7_TheoryHypothesis, N8_ResearchDesign]
+    entry_requirements:
+      - gate: foundation_stability_gate
+        op: passed
+    exit_gate:
+      id: manuscript_consistency_gate
+      conditions:
+        - field: literature_positioning.contribution_statement
+          op: contains
+          value: "不是在重复"
+        - field: introduction_draft.full_text
+          op: min_chars
+          value: 1200
+        - field: theory_hypotheses_draft.hypotheses
+          op: min_length
+          value: 2
+        - field: research_design_draft.variable_map
+          op: min_length
+          value: 3
+        - field: research_design_draft.model_map
+          op: min_length
+          value: 2
+    rollback_scope: [N5_Literature, N6_Introduction, N7_TheoryHypothesis, N8_ResearchDesign]
+
+  stage_3_stresstest:
+    name: 审稿压测链
+    node_order: [N9_StressTest]
+    entry_requirements:
+      - gate: manuscript_consistency_gate
+        op: passed
+    exit_gate:
+      id: final_acceptance_gate
+      conditions:
+        - field: stress_test_report.top_3_criticisms
+          op: exact_length
+          value: 3
+        - field: stress_test_report.one_sentence_thesis
+          op: not_empty
+        - field: stress_test_report.pass_or_revise
+          op: in
+          value: ["pass", "revise"]
+    rollback_scope: [N9_StressTest]
+
+nodes:
+  N0_Init:
+    stage: stage_1_foundation
+    output_key: research_card
+    agents: {check: A_N0_Check, generate: A_N0_Generate, validate: A_N0_Validate}
+    on_success: N1_Object
+    on_failure: {retry_node_max: 1, rollback_to: N0_Init}
+  N1_Object:
+    stage: stage_1_foundation
+    output_key: research_object_card
+    agents: {check: A_N1_Check, generate: A_N1_Generate, validate: A_N1_Validate}
+    on_success: N2_Tension
+    on_failure: {retry_node_max: 1, rollback_to: N0_Init}
+  N2_Tension:
+    stage: stage_1_foundation
+    output_key: tension_card
+    agents: {check: A_N2_Check, generate: A_N2_Generate, validate: A_N2_Validate}
+    on_success: N3_Concept
+    on_failure: {retry_node_max: 1, rollback_to: N1_Object}
+  N3_Concept:
+    stage: stage_1_foundation
+    output_key: concept_table
+    agents: {check: A_N3_Check, generate: A_N3_Generate, validate: A_N3_Validate}
+    on_success: N4_Causality
+    on_failure: {retry_node_max: 1, rollback_to: N2_Tension}
+  N4_Causality:
+    stage: stage_1_foundation
+    output_key: causal_card
+    agents: {check: A_N4_Check, generate: A_N4_Generate, validate: A_N4_Validate}
+    on_success: stage_1_foundation.END
+    on_failure: {retry_node_max: 1, rollback_to: N3_Concept}
+  N5_Literature:
+    stage: stage_2_manuscript
+    output_key: literature_positioning
+    agents: {check: A_N5_Check, generate: A_N5_Generate, validate: A_N5_Validate}
+    on_success: N6_Introduction
+    on_failure: {retry_node_max: 1, rollback_to: N5_Literature}
+  N6_Introduction:
+    stage: stage_2_manuscript
+    output_key: introduction_draft
+    agents: {check: A_N6_Check, generate: A_N6_Generate, validate: A_N6_Validate}
+    on_success: N7_TheoryHypothesis
+    on_failure: {retry_node_max: 1, rollback_to: N5_Literature}
+  N7_TheoryHypothesis:
+    stage: stage_2_manuscript
+    output_key: theory_hypotheses_draft
+    agents: {check: A_N7_Check, generate: A_N7_Generate, validate: A_N7_Validate}
+    on_success: N8_ResearchDesign
+    on_failure: {retry_node_max: 1, rollback_to: N6_Introduction}
+  N8_ResearchDesign:
+    stage: stage_2_manuscript
+    output_key: research_design_draft
+    agents: {check: A_N8_Check, generate: A_N8_Generate, validate: A_N8_Validate}
+    on_success: stage_2_manuscript.END
+    on_failure: {retry_node_max: 1, rollback_to: N7_TheoryHypothesis}
+  N9_StressTest:
+    stage: stage_3_stresstest
+    output_key: stress_test_report
+    agents: {check: A_N9_Check, generate: A_N9_Generate, validate: A_N9_Validate}
+    on_success: stage_3_stresstest.END
+    on_failure: {retry_node_max: 1, rollback_to: N9_StressTest}
+
+agents:
+  A_N0_Check:
+    role: check_agent
+    node: N0_Init
+    prompt_ref: prompts.A_N0_Check
+    inputs: [user_goal, target_journal, research_idea_raw, domain_context]
+    outputs: [is_input_sufficient, missing_fields, reason]
+    pass_rule:
+      - field: is_input_sufficient
+        op: equals
+        value: true
+  A_N0_Generate:
+    role: generate_agent
+    node: N0_Init
+    prompt_ref: prompts.A_N0_Generate
+    inputs: [user_goal, target_journal, research_idea_raw, domain_context]
+    outputs: [research_theme, surface_question, suspected_core_variables, user_pain_points, current_stage, immediate_priority_questions]
+  A_N0_Validate:
+    role: validate_agent
+    node: N0_Init
+    inputs: [research_card]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: research_card.research_theme
+        op: not_empty
+      - field: research_card.surface_question
+        op: not_empty
+      - field: research_card.current_stage
+        op: not_empty
+      - field: research_card.immediate_priority_questions
+        op: min_length
+        value: 1
+    fail_signals: [generic_summary_only, no_current_stage, no_priority_question]
+
+  A_N1_Check:
+    role: check_agent
+    node: N1_Object
+    prompt_ref: prompts.A_N1_Check
+    inputs: [research_card]
+    outputs: [ready_for_object_clarification, reason]
+    pass_rule:
+      - field: ready_for_object_clarification
+        op: equals
+        value: true
+  A_N1_Generate:
+    role: generate_agent
+    node: N1_Object
+    prompt_ref: prompts.A_N1_Generate
+    inputs: [research_card]
+    outputs: [surface_explanandum, true_research_object, difference_statement, why_surface_is_insufficient, anchor_sentence]
+  A_N1_Validate:
+    role: validate_agent
+    node: N1_Object
+    inputs: [research_object_card]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: research_object_card.true_research_object
+        op: not_empty
+      - field: research_object_card.anchor_sentence
+        op: contains_all
+        value: ["不是", "而是"]
+    fail_signals: [repeats_surface_only, object_definition_is_vague]
+
+  A_N2_Check:
+    role: check_agent
+    node: N2_Tension
+    prompt_ref: prompts.A_N2_Check
+    inputs: [research_object_card]
+    outputs: [ready_for_tension_extraction, reason]
+    pass_rule:
+      - field: ready_for_tension_extraction
+        op: equals
+        value: true
+  A_N2_Generate:
+    role: generate_agent
+    node: N2_Tension
+    prompt_ref: prompts.A_N2_Generate
+    inputs: [research_object_card]
+    outputs: [core_question_1, core_question_2, main_theoretical_tension, excluded_side_issues]
+  A_N2_Validate:
+    role: validate_agent
+    node: N2_Tension
+    inputs: [tension_card]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: tension_card.core_question_1
+        op: not_empty
+      - field: tension_card.main_theoretical_tension
+        op: not_empty
+    fail_signals: [too_many_major_questions, descriptive_not_theoretical]
+
+  A_N3_Check:
+    role: check_agent
+    node: N3_Concept
+    prompt_ref: prompts.A_N3_Check
+    inputs: [research_object_card, tension_card]
+    outputs: [ready_for_concept_split, reason]
+    pass_rule:
+      - field: ready_for_concept_split
+        op: equals
+        value: true
+  A_N3_Generate:
+    role: generate_agent
+    node: N3_Concept
+    prompt_ref: prompts.A_N3_Generate
+    inputs: [research_object_card, tension_card]
+    outputs: [concepts]
+  A_N3_Validate:
+    role: validate_agent
+    node: N3_Concept
+    inputs: [concept_table]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: concept_table.concepts
+        op: min_length
+        value: 2
+      - field: concept_table.concepts[*].ontological_type
+        op: all_not_empty
+    fail_signals: [circular_definition, mixed_resource_capability_outcome]
+
+  A_N4_Check:
+    role: check_agent
+    node: N4_Causality
+    prompt_ref: prompts.A_N4_Check
+    inputs: [research_object_card, tension_card, concept_table]
+    outputs: [ready_for_causality, reason]
+    pass_rule:
+      - field: ready_for_causality
+        op: equals
+        value: true
+  A_N4_Generate:
+    role: generate_agent
+    node: N4_Causality
+    prompt_ref: prompts.A_N4_Generate
+    inputs: [research_object_card, tension_card, concept_table]
+    outputs: [ex_ante_selection_logic, ex_post_generation_logic, primary_logic, secondary_logic, causal_chain, one_sentence_thesis]
+  A_N4_Validate:
+    role: validate_agent
+    node: N4_Causality
+    inputs: [causal_card]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: causal_card.causal_chain
+        op: min_length
+        value: 2
+      - field: causal_card.causal_chain
+        op: max_length
+        value: 3
+      - field: causal_card.one_sentence_thesis
+        op: not_empty
+    fail_signals: [no_selection_generation_split, causal_chain_too_long]
+
+  A_N5_Check:
+    role: check_agent
+    node: N5_Literature
+    prompt_ref: prompts.A_N5_Check
+    inputs: [causal_card, concept_table, target_journal]
+    outputs: [ready_for_literature_positioning, reason]
+    pass_rule:
+      - field: ready_for_literature_positioning
+        op: equals
+        value: true
+  A_N5_Generate:
+    role: generate_agent
+    node: N5_Literature
+    prompt_ref: prompts.A_N5_Generate
+    inputs: [causal_card, concept_table, target_journal]
+    outputs: [parent_literature, nearest_neighbor_concepts, literature_gap, contribution_statement, non_contribution_warning]
+  A_N5_Validate:
+    role: validate_agent
+    node: N5_Literature
+    inputs: [literature_positioning]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: literature_positioning.literature_gap
+        op: not_empty
+      - field: literature_positioning.contribution_statement
+        op: contains
+        value: "不是在重复"
+    fail_signals: [literature_listing_without_positioning, fake_contribution]
+
+  A_N6_Check:
+    role: check_agent
+    node: N6_Introduction
+    prompt_ref: prompts.A_N6_Check
+    inputs: [research_object_card, causal_card, literature_positioning, target_journal]
+    outputs: [ready_for_introduction, reason]
+    pass_rule:
+      - field: ready_for_introduction
+        op: equals
+        value: true
+  A_N6_Generate:
+    role: generate_agent
+    node: N6_Introduction
+    prompt_ref: prompts.A_N6_Generate
+    inputs: [research_object_card, causal_card, literature_positioning, target_journal]
+    outputs: [full_text, paragraph_map]
+  A_N6_Validate:
+    role: validate_agent
+    node: N6_Introduction
+    inputs: [introduction_draft]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: introduction_draft.full_text
+        op: min_chars
+        value: 1200
+      - field: introduction_draft.paragraph_map
+        op: min_length
+        value: 4
+    fail_signals: [reality_theory_mismatch, object_drift]
+
+  A_N7_Check:
+    role: check_agent
+    node: N7_TheoryHypothesis
+    prompt_ref: prompts.A_N7_Check
+    inputs: [introduction_draft, concept_table, causal_card]
+    outputs: [ready_for_theory_hypotheses, reason]
+    pass_rule:
+      - field: ready_for_theory_hypotheses
+        op: equals
+        value: true
+  A_N7_Generate:
+    role: generate_agent
+    node: N7_TheoryHypothesis
+    prompt_ref: prompts.A_N7_Generate
+    inputs: [introduction_draft, concept_table, causal_card]
+    outputs: [full_text, hypotheses]
+  A_N7_Validate:
+    role: validate_agent
+    node: N7_TheoryHypothesis
+    inputs: [theory_hypotheses_draft]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: theory_hypotheses_draft.full_text
+        op: min_chars
+        value: 1500
+      - field: theory_hypotheses_draft.hypotheses
+        op: min_length
+        value: 2
+    fail_signals: [hypothesis_without_theory_support, no_hierarchy]
+
+  A_N8_Check:
+    role: check_agent
+    node: N8_ResearchDesign
+    prompt_ref: prompts.A_N8_Check
+    inputs: [theory_hypotheses_draft, concept_table, causal_card]
+    outputs: [ready_for_research_design, reason]
+    pass_rule:
+      - field: ready_for_research_design
+        op: equals
+        value: true
+  A_N8_Generate:
+    role: generate_agent
+    node: N8_ResearchDesign
+    prompt_ref: prompts.A_N8_Generate
+    inputs: [theory_hypotheses_draft, concept_table, causal_card]
+    outputs: [full_text, variable_map, model_map]
+  A_N8_Validate:
+    role: validate_agent
+    node: N8_ResearchDesign
+    inputs: [research_design_draft]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: research_design_draft.full_text
+        op: min_chars
+        value: 1800
+      - field: research_design_draft.variable_map
+        op: min_length
+        value: 3
+      - field: research_design_draft.model_map
+        op: min_length
+        value: 2
+    fail_signals: [variable_theory_mismatch, outcome_used_as_mechanism]
+
+  A_N9_Check:
+    role: check_agent
+    node: N9_StressTest
+    prompt_ref: prompts.A_N9_Check
+    inputs: [research_object_card, concept_table, causal_card, literature_positioning, introduction_draft, theory_hypotheses_draft, research_design_draft]
+    outputs: [ready_for_stress_test, reason]
+    pass_rule:
+      - field: ready_for_stress_test
+        op: equals
+        value: true
+  A_N9_Generate:
+    role: generate_agent
+    node: N9_StressTest
+    prompt_ref: prompts.A_N9_Generate
+    inputs: [research_object_card, concept_table, causal_card, literature_positioning, introduction_draft, theory_hypotheses_draft, research_design_draft]
+    outputs: [top_3_criticisms, failure_layer_map, one_sentence_thesis, pass_or_revise]
+  A_N9_Validate:
+    role: validate_agent
+    node: N9_StressTest
+    inputs: [stress_test_report]
+    outputs: [is_valid, failed_rules, reason]
+    rules:
+      - field: stress_test_report.top_3_criticisms
+        op: exact_length
+        value: 3
+      - field: stress_test_report.one_sentence_thesis
+        op: not_empty
+      - field: stress_test_report.pass_or_revise
+        op: in
+        value: [pass, revise]
+    fail_signals: [criticisms_are_superficial, no_rollback_node]
+
+orchestrator:
+  per_node_sequence:
+    - step: run_check_agent
+    - step: evaluate_check_pass
+    - step: run_generate_agent
+    - step: run_validate_agent
+    - step: evaluate_validate_pass
+    - step: route_next_or_rollback
+  rollback_rules:
+    within_stage:
+      mapping:
+        N0_Init: N0_Init
+        N1_Object: N0_Init
+        N2_Tension: N1_Object
+        N3_Concept: N2_Tension
+        N4_Causality: N3_Concept
+        N5_Literature: N5_Literature
+        N6_Introduction: N5_Literature
+        N7_TheoryHypothesis: N6_Introduction
+        N8_ResearchDesign: N7_TheoryHypothesis
+        N9_StressTest: N9_StressTest
+    cross_stage:
+      - when_field: stress_test_report.failure_layer_map[*].rollback_node
+        contains_any: [N1_Object, N2_Tension, N3_Concept, N4_Causality]
+        goto_stage: stage_1_foundation
+      - when_field: stress_test_report.failure_layer_map[*].rollback_node
+        contains_any: [N5_Literature, N6_Introduction, N7_TheoryHypothesis, N8_ResearchDesign]
+        goto_stage: stage_2_manuscript
+
+operators: [not_empty, equals, contains, contains_all, contains_any, min_length, max_length, exact_length, min_chars, all_not_empty, in, passed]
+
+final_success:
+  requires:
+    - gate: foundation_stability_gate
+      op: passed
+    - gate: manuscript_consistency_gate
+      op: passed
+    - gate: final_acceptance_gate
+      op: passed
+    - field: stress_test_report.pass_or_revise
+      op: equals
+      value: pass
