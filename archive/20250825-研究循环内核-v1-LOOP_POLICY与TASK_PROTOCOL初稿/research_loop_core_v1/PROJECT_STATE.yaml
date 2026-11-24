@@ -1,0 +1,54 @@
+# Persistent source of truth for the current research project.
+project_id: ""
+project_title: ""
+status: active
+
+research:
+  paradigm: []
+  question:
+    status: unknown
+    text: ""
+  puzzle:
+    status: unknown
+    text: ""
+  theory:
+    status: unknown
+    version: ""
+  mechanism:
+    status: unknown
+    version: ""
+  contribution:
+    status: unknown
+    version: ""
+  research_design:
+    status: unknown
+    version: ""
+  evidence_architecture:
+    status: unknown
+    version: ""
+
+workflow:
+  current_function: F0
+  current_stage: problem_framing
+  current_task_id: ""
+  next_task_id: ""
+  blocked: false
+  block_reason: ""
+
+validation:
+  overall_status: open
+  open_failures: []
+  last_validation_id: ""
+
+memory:
+  last_update: ""
+  pending_promotions: []
+
+human_checkpoints:
+  pending: []
+
+runtime:
+  last_model: ""
+  last_runtime: ""
+  last_skill: ""
+  last_updated: ""
